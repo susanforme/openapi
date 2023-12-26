@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.base.json",
+  // "include": [
+  //   "src",
+  //   "/test/**/*",
+  //   "./rollup.config.ts",
+  //   // 必须包含rollup.config.ts，否则rollup打包时会报错
+  // ],
+  "exclude": [
+    "node_modules",
+    "package.json",
+    "dist"
+  ],
+  "files": [
+    "src/index.ts",
+    "rollup.config.ts",
+  ],
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "declaration": true,
+    "declarationDir": "dist/types",
+    "resolveJsonModule": false,
+    "outDir": "dist",
+  },
+}
