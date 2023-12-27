@@ -7,21 +7,17 @@
 ## 目录结构
 
 ```bash
-├── models 
+├── models
 ├── api
 ```
 
 ### models
 
-/跟模块名,  labms.ts
+index.ts
 
 ```ts
-export namespace LabmsModel{
-    
-}
+export namespace LabmsModel {}
 ```
-
-
 
 ## Todo
 
