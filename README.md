@@ -7,12 +7,13 @@
 ## 目录结构
 
 ```bash
-├── models / labms
-├── package.json
-├── src
+├── models 
+├── api
 ```
 
 ### models
+
+/跟模块名,  labms.ts
 
 ```ts
 export namespace LabmsModel{
