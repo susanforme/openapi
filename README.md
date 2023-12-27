@@ -13,3 +13,4 @@
 - [ ] 生成mock代码
 - [ ] 生成mock类型
 - [ ] 读取prettier配置,生成符合prettier的代码
+- [ ] 读取tsconfig配置,生成符合tsconfig的代码
