@@ -1,5 +1,27 @@
 # 从openapi生成类型及代码
 
+# 设计
+
+1. 支持多model传入,根据一级区分
+
+## 目录结构
+
+```bash
+├── models / labms
+├── package.json
+├── src
+```
+
+### models
+
+```ts
+export namespace LabmsModel{
+    
+}
+```
+
+
+
 ## Todo
 
 - [ ] 支持传入函数及json字符串

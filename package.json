@@ -42,10 +42,12 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^11.1.0",
     "@babel/generator": "^7.23.6",
     "@babel/parser": "^7.23.6",
     "@babel/traverse": "^7.23.6",
     "@babel/types": "^7.23.6",
+    "node-fetch": "^3.3.2",
     "ts-factory-code-generator-generator": "^0.7.0"
   }
 }

@@ -1,2 +1,4 @@
 node_modules
 dist
+_confidential.json
+_output.json
