@@ -1,11 +1,17 @@
-import test from './_confidential.json';
 // 能读写$ref 并转换,但是这样导致生成多个重复model,所以没必要
-import $RefParser from '@apidevtools/json-schema-ref-parser';
+// import $RefParser from '@apidevtools/json-schema-ref-parser';
 import fetch from 'node-fetch';
-import { writeFile } from 'fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import path from 'path';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'node:url';
+import {
+  OpenAPIJSONSchema,
+  OpenAPIServicesType,
+  Options,
+} from './type';
+import { Utils } from './utils';
+
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = path.dirname(__filename);
@@ -13,70 +19,104 @@ const __dirname = path.dirname(__filename);
 //@ts-ignore
 globalThis.fetch = fetch;
 
-async function testRef() {
-  try {
-    let schema = await $RefParser.dereference(test as any);
-    await writeFile(
-      './src/_output.json',
-      JSON.stringify(schema),
-    );
-  } catch (error) {
-    console.error('err', error);
-  }
-}
-testRef();
-
-class OpenAPI {
-  options: Options;
-  models: any[] = [];
-  api: any[] = [];
-  /** json */
-  jsonSchema: string = '';
+/**
+ * @description 根据openapi2.0 json 生成ts代码
+ */
+export class OpenAPI {
+  #options: Required<Options>;
+  #models: any[] = [];
+  #services: OpenAPIServicesType = {};
+  /** 传入的json实例化后的对象 */
+  jsonSchema?: OpenAPIJSONSchema;
   constructor(options: Options) {
-    this.options = this.#defineConfig(options);
+    this.#options = this.#defineConfig(options);
   }
   async run() {
     // 1.获取json
     await this.#getJsonSchema();
     // 2.解析json,生成ast的同时,生成models和api 的代码
-    this.generateAll();
+    this.#generateAll();
     // 3.统一写入,node异步io性能更好
   }
   async #getJsonSchema() {
-    const { input } = this.options;
+    const { input } = this.#options;
     try {
       this.jsonSchema = JSON.parse(input);
     } catch (error) {
-      // const value = await fetch(input);
-      // this.jsonSchema = (await value.json()) as string;
+      // 判断输入是否为本地文件协议,兼容linux
+      const isAbsolute = path.isAbsolute(input);
+      if (isAbsolute) {
+        const value = await readFile(input, 'utf-8');
+        this.jsonSchema = JSON.parse(value);
+      } else {
+        if (
+          ['http:', 'https:'].every(
+            (item) => !input.startsWith(item),
+          )
+        ) {
+          throw new Error('请输入正确的json字符串或者路径');
+        } else {
+          const value = await fetch(input);
+          this.jsonSchema = (await value.json()) as any;
+        }
+      }
     }
   }
   /**
    * @description  任务分片
    */
-  async generateAll() {
-    const tasks: any[] = [];
-    console.time('worker');
-    let capacity = 5;
-    let box = [];
-    let boxIndex = 0;
-    for (let index = 0; index < 100; index++) {
-      if (box.length < capacity) {
-        box.push(index);
-        boxIndex++;
-      } else {
-        tasks.push(this.#createTask(box));
-        boxIndex = 0;
-        box = [];
+  async #generateAll() {
+    this.#tagServices();
+    // const tasks: any[] = [];
+    // console.time('总任务耗时');
+    // let box = [];
+    // let boxIndex = 0;
+    // for (let index = 0; index < 100; index++) {
+    //   if (box.length < this.#options.workerCapacity) {
+    //     box.push(index);
+    //     boxIndex++;
+    //   } else {
+    //     tasks.push(this.#createTask(box));
+    //     boxIndex = 0;
+    //     box = [];
+    //   }
+    // }
+    // const data = await Promise.all(tasks);
+    // let time = 0;
+    // data.forEach((item) => {
+    //   time += item.time;
+    // });
+    // console.timeEnd('总任务耗时');
+    // console.log('多worker代码合并执行时间', time);
+  }
+  /**
+   * @description 给路径分组,
+   * @example 有路径 /labms/a/b/c , /labms/a/b/d /admin/a/b/c
+   * 在sameRootLevel为true时,  不会生成文件夹直接放在services下, 如pathSplitLevel为2, 会生成a.ts 和 b.ts 两个文件. 若为3 则生成aB.ts
+   * 在sameRootLevel为false时, 会生成两个文件夹/labms 和 /admin, 如pathSplitLevel为2, 会生成a.ts 和 b.ts 两个文件. 若为3 则生成aB.ts
+   */
+  #tagServices() {
+    // 最多创建一级文件夹,后续文件名为路径
+    const { paths } = this.jsonSchema!;
+    const { pathSplitLevel, sameRootLevel } = this.#options;
+    // 对service进行分组
+    Object.entries(paths).forEach(([path, value]) => {
+      const pathObj = Utils.urlToCamelCase(
+        path,
+        pathSplitLevel,
+        sameRootLevel,
+      );
+      const serviceKey = pathObj.camelStr;
+      const serviceValue = this.#services[serviceKey];
+      if (!serviceValue) {
+        this.#services[serviceKey] = {};
       }
-    }
-    const data = await Promise.all(tasks);
-    let time = 0;
-    data.forEach((item) => {
-      time += item.time;
+      this.#services[serviceKey][path] = value;
     });
-    console.timeEnd('worker');
-    console.log('代码执行时间', time);
+    this.#write(
+      './test.json',
+      JSON.stringify(this.#services),
+    );
   }
   #createTask(ids: number[]) {
     const worker = new Worker(
@@ -93,12 +133,12 @@ class OpenAPI {
         console.log('err', value);
         reject(value);
       });
-      worker.on('exit', (code) => {
-        console.log('exit', code);
-        if (code !== 0) {
-          reject(code);
-        }
-      });
+      // worker.on('exit', (code) => {
+      //   console.log('exit', code);
+      //   if (code !== 0) {
+      //     reject(code);
+      //   }
+      // });
     });
   }
   #parseJsonSchema() {}
@@ -108,37 +148,28 @@ class OpenAPI {
   async #generateTsCode() {
     // web worker
   }
-  #defineConfig(options: Options): Options {
+  #defineConfig(options: Options): Required<Options> {
     const {
       modelsDirectoryName = 'models',
       apiDirectoryName = 'api',
+      workerCapacity = 10,
+      pathSplitLevel = 2,
+      sameRootLevel = true,
     } = options;
     return {
       ...options,
       modelsDirectoryName,
       apiDirectoryName,
+      workerCapacity,
+      pathSplitLevel,
+      sameRootLevel,
     };
   }
-  async write(propPath: string, content: string) {
+  async #write(propPath: string, content: string) {
     const outputpath = path.resolve(
-      this.options.output,
+      this.#options.output,
       propPath,
     );
     await writeFile(outputpath, content);
   }
 }
-
-const openAPI = new OpenAPI({
-  input: './_confidential.json',
-  output: '',
-});
-openAPI.run();
-
-export type Options = {
-  /** 输入json */
-  input: string;
-  /** 输出路径 */
-  output: string;
-  modelsDirectoryName?: string;
-  apiDirectoryName?: string;
-};
