@@ -10,30 +10,32 @@ const generator = (_generator as any)[
 ] as typeof _generator;
 
 const start = Date.now();
-for (let index = 0; index < 100; index++) {
-  const ast = parser.parse('', {
-    sourceType: 'module',
-    plugins: ['typescript'],
-  });
-  /**
-   *  type a = {
-    work:string;
-     } 
-   */
-  ast.program.body.push(
-    types.typeAlias(
-      types.identifier('a'),
-      null,
-      types.objectTypeAnnotation([
-        types.objectTypeProperty(
-          types.identifier('work'),
-          types.stringTypeAnnotation(),
-        ),
-      ]),
-    ),
-  );
-  // 生成ts代码
-  const tsCode = generator(ast, {}).code;
+for (let index = 0; index < workerData.length; index++) {
+  for (let index = 0; index < 1000; index++) {
+    const ast = parser.parse('', {
+      sourceType: 'module',
+      plugins: ['typescript'],
+    });
+    /**
+     *  type a = {
+      work:string;
+       } 
+     */
+    ast.program.body.push(
+      types.typeAlias(
+        types.identifier('a'),
+        null,
+        types.objectTypeAnnotation([
+          types.objectTypeProperty(
+            types.identifier('work'),
+            types.stringTypeAnnotation(),
+          ),
+        ]),
+      ),
+    );
+    // 生成ts代码
+    const tsCode = generator(ast, {}).code;
+  }
 }
 
 parentPort?.postMessage({

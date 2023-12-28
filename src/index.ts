@@ -57,8 +57,18 @@ class OpenAPI {
   async generateAll() {
     const tasks: any[] = [];
     console.time('worker');
+    let capacity = 5;
+    let box = [];
+    let boxIndex = 0;
     for (let index = 0; index < 100; index++) {
-      tasks.push(this.#createTask(index));
+      if (box.length < capacity) {
+        box.push(index);
+        boxIndex++;
+      } else {
+        tasks.push(this.#createTask(box));
+        boxIndex = 0;
+        box = [];
+      }
     }
     const data = await Promise.all(tasks);
     let time = 0;
@@ -68,15 +78,15 @@ class OpenAPI {
     console.timeEnd('worker');
     console.log('代码执行时间', time);
   }
-  #createTask(id: any) {
+  #createTask(ids: number[]) {
     const worker = new Worker(
       path.resolve(__dirname, './worker.ts'),
-      {},
+      {
+        workerData: ids,
+      },
     );
-    console.time('worker' + id);
     return new Promise((resolve, reject) => {
       worker.on('message', (value) => {
-        console.timeEnd('worker' + id);
         resolve(value);
       });
       worker.on('error', (value) => {
