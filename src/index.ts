@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = path.dirname(__filename);
-
+// 大字符串 arraybuffer
 //@ts-ignore
 globalThis.fetch = fetch;
 
