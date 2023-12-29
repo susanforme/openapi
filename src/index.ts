@@ -7,6 +7,7 @@ import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'node:url';
 import {
   OpenAPIJSONSchema,
+  OpenAPIModelType,
   OpenAPIServicesType,
   Options,
 } from './type';
@@ -24,7 +25,7 @@ globalThis.fetch = fetch;
  */
 export class OpenAPI {
   #options: Required<Options>;
-  #models: any[] = [];
+  #models: OpenAPIModelType = {};
   #services: OpenAPIServicesType = {};
   /** 传入的json实例化后的对象 */
   jsonSchema?: OpenAPIJSONSchema;
@@ -66,7 +67,7 @@ export class OpenAPI {
    * @description  任务分片
    */
   async #generateAll() {
-    this.#tagServices();
+    this.#tagServicesAndModels();
     // const tasks: any[] = [];
     // console.time('总任务耗时');
     // let box = [];
@@ -95,9 +96,9 @@ export class OpenAPI {
    * 在sameRootLevel为true时,  不会生成文件夹直接放在services下, 如pathSplitLevel为2, 会生成a.ts 和 b.ts 两个文件. 若为3 则生成aB.ts
    * 在sameRootLevel为false时, 会生成两个文件夹/labms 和 /admin, 如pathSplitLevel为2, 会生成a.ts 和 b.ts 两个文件. 若为3 则生成aB.ts
    */
-  #tagServices() {
+  #tagServicesAndModels() {
     // 最多创建一级文件夹,后续文件名为路径
-    const { paths } = this.jsonSchema!;
+    const { paths, definitions } = this.jsonSchema!;
     const { pathSplitLevel, sameRootLevel } = this.#options;
     // 对service进行分组
     Object.entries(paths).forEach(([path, value]) => {
@@ -113,10 +114,7 @@ export class OpenAPI {
       }
       this.#services[serviceKey][path] = value;
     });
-    this.#write(
-      './test.json',
-      JSON.stringify(this.#services),
-    );
+    this.#models = definitions;
   }
   #createTask(ids: number[]) {
     const worker = new Worker(

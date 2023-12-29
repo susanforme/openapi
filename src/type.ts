@@ -85,5 +85,7 @@ export type Options = {
 };
 
 export type OpenAPIServicesType = {
-  [key: string]: OpenAPIJSONSchema['paths']
+  [key: string]: OpenAPIJSONSchema['paths'];
 };
+export type OpenAPIModelType =
+  OpenAPIJSONSchema['definitions'];
